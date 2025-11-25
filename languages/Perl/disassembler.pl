@@ -62,7 +62,7 @@ sub open_file {
 
   while (my $line = <$fh>) {
     chomp $line;                # truncate newline
-    my $val = oct("0b$line");   # convert string into binary literal
+    my $val = oct("0b$line");   # interpret strings as base-2 int
     push @lines, $val;
   }
 

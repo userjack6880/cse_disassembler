@@ -1,129 +1,124 @@
-# Check if at least one input file path has been passed
-if ARGV.length < 1
-    print "At least one file expected"
-    exit
+# John Bradley 2025
+
+comp_table = {
+  0b0101010 => '0',
+  0b0111111 => '1',
+  0b0111010 => '-1',
+  0b0001100 => 'D',
+  0b0110000 => 'A',
+  0b1110000 => 'M',
+  0b0001101 => '!D',
+  0b0110001 => '!A',
+  0b1110001 => '!M',
+  0b0001111 => '-D',
+  0b0110011 => '-A',
+  0b1110011 => '-M',
+  0b0011111 => 'D+1',
+  0b0110111 => 'A+1',
+  0b1110111 => 'M+1',
+  0b0001110 => 'D-1',
+  0b0110010 => 'A-1',
+  0b1110010 => 'M-1',
+  0b0000010 => 'D+A',
+  0b1000010 => 'D+M',
+  0b0010011 => 'D-A',
+  0b1010011 => 'D-M',
+  0b0000111 => 'A-D',
+  0b1000111 => 'M-D',
+  0b0000000 => 'D&A',
+  0b1000000 => 'D&M',
+  0b0010101 => 'D|A',
+  0b1010101 => 'D|M',
+  # invalid comps
+  0b1101010 => '',
+  0b1111111 => '',
+  0b1111010 => '',
+  0b1001100 => '',
+  0b1001101 => '',
+  0b1001111 => '',
+  0b1011111 => ''
+}
+
+jump_table = {
+  0b000 => '',
+  0b001 => 'JGT',
+  0b010 => 'JEQ',
+  0b011 => 'JGE',
+  0b100 => 'JLT',
+  0b101 => 'JNE',
+  0b110 => 'JLE',
+  0b111 => 'JMP'
+}
+
+def open_file(in_file)
+  puts "Can't open #{in_file}"; exit (1) if not File.file?(in_file)
+
+  lines = File.readlines(in_file, chomp: true)  # truncate newline while reading
+  op_codes = lines.map { |line| line.to_i(2) }  # interpret string as base-2 int
 end
 
-# Loop through each input file
-for inFile in ARGV do
+def write_file(out_file, lines)
+  File.write(out_file, lines.join("\n"))
+  File.write(out_file, "\n", mode: "a")         # add in the last linebreak
+end
 
-    # Check if input file path has appropriate extension 
-    if not inFile.end_with? ".hack"
-        print "Input must be a .hack file"
-        exit
+def get_bit(value, bit_index)
+  (value & (1 << bit_index)) != 0 ? 1 : 0
+end
+
+
+puts "At least one file expected"; exit (1) if ARGV.length < 1
+
+for in_file in ARGV do
+  puts "must be .hack file!"; exit (1) if not in_file.end_with? ".hack"
+
+  out_file = in_file.dup.sub! ".hack", ".asm"
+
+  # open the file and populate lines
+  binary = open_file(in_file)
+
+  # decode the binary
+  asm_array = []
+
+  for op in binary do
+    # determine if c or a op
+    if get_bit(op,15)
+      # c op
+      # determine comp
+      comp_val = (op >> 6) & 0b1111111          # bit shift and isolate 7 bits
+      comp = comp_table[comp_val]
+
+      # error check
+      puts "invalid comp #{comp_val.to_s(2).rjust(7, "0")}"; exit (1) if comp.empty?
+
+      # determine dest
+      dest = ''
+      dest << "A" if get_bit(op,5)
+      dest << "D" if get_bit(op,4)
+      dest << "M" if get_bit(op,3)
+
+      # determine jump
+      jump = jump_table[op & 0b111]
+
+      # now build the operation
+      asm = ''
+
+      # dest
+      asm << "#{dest}=" if not dest.empty?
+
+      # comp
+      asm << comp
+
+      # jump
+      asm << ";#{jump}" if not jump.empty?
+
+      asm_array << asm
+    else
+      # a op
+      asm_array << "@#{op}"
     end
+  end
 
-    # Check if input file exists
-    if not File.file?(inFile)
-        print "Input file does not exist"
-        exit
-    end
-
-    # Read binary lines from input file
-    inLines = File.readlines(inFile)
-
-    # Create structure to contain HACK assembly lines
-    outLines = []
-
-    # Computation Lookup Structure
-    compTable = {
-        "0101010" => "0",
-        "0111111" => "1",
-        "0111010" => "-1",
-        "0001100" => "D",
-        "0110000" => "A",
-        "1110000" => "M",
-        "0001101" => "!D",
-        "0110001" => "!A",
-        "1110001" => "!M",
-        "0001111" => "-D",
-        "0110011" => "-A",
-        "1110011" => "-M",
-        "0011111" => "D+1",
-        "0110111" => "A+1",
-        "1110111" => "M+1",
-        "0001110" => "D-1",
-        "0110010" => "A-1",
-        "1110010" => "M-1",
-        "0000010" => "D+A",
-        "1000010" => "D+M",
-        "0010011" => "D-A",
-        "1010011" => "D-M",
-        "0000111" => "A-D",
-        "1000111" => "M-D",
-        "0000000" => "D&A",
-        "1000000" => "D&M",
-        "0010101" => "D|A",
-        "1010101" => "D|M"
-    }
-
-    # Destination Lookup Structure
-    destTable = {
-        "000" => "",
-        "001" => "M=",
-        "010" => "D=",
-        "011" => "DM=",
-        "100" => "A=",
-        "101" => "AM=",
-        "110" => "AD=",
-        "111" => "ADM="
-    }
-
-    # Jump Lookup Structure
-    jumpTable = {
-        "000" => "",
-        "001" => ";JGT",
-        "010" => ";JEQ",
-        "011" => ";JGE",
-        "100" => ";JLT",
-        "101" => ";JNE",
-        "110" => ";JLE",
-        "111" => ";JMP"
-    }
-
-    ################################################################################
-
-    # Process the binary inputs and convert them to HACK assembly
-    for line in inLines do
-
-        # A Instruction
-        # if - Check instruction op-code (the first char in the string)
-
-            # Get the remaining substring and convert to decimal 
-            # Conversion (just uncomment)
-            # value = line[1, 15].to_i(2)
-
-            # Construct the appropriate HACK instruction
-            # https://www.delftstack.com/howto/ruby/ruby-string-concatenate/
-
-            # Append to hackList
-            # https://www.geeksforgeeks.org/add-array-elements-in-ruby/
-
-        # C Instruction
-        # elsif - Check instruction op-code (the first char in the string)
-
-            # Create strings from the appropriate substrings
-            # cBit, dBit, jBit
-            # https://www.delftstack.com/howto/ruby/substring-in-ruby/
-
-            # Return HACK destination string from destTable using dBit
-            # https://www.rubyguides.com/2020/05/ruby-hash-methods/
-
-            # Return HACK computation string from compTable using cBit
-
-            # Return HACK jump string from jumpTable using jBit
-
-            # Construct the appropriate HACK instruction
-
-            # Append to hackList
-        # end
-    end
-
-    ################################################################################
-
-    # Create output file name
-    outFile = inFile.dup.sub! ".hack", ".asm"
-
-    # Write data to output file
-    File.write(outFile, outLines.join(""))
+  # write to file
+  write_file(out_file, asm_array)
 end

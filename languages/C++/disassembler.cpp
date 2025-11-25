@@ -70,7 +70,7 @@ vector<int> open_file(const string& in_file) {
   string line;
 
   while (getline(fh, line)) {
-    int val = stoi(line, nullptr, 2);   // convert string to int
+    int val = stoi(line, nullptr, 2);   // interpret strings as base-2 int
     lines.push_back(val);
   }
 

@@ -58,7 +58,7 @@ function open_file($in_file) {
 
   while (($line = fgets($fh)) !== false) {
     $line = rtrim($line, "\r\n");   # truncate newline
-    $val  = bindec($line);          # convert string into binary literal
+    $val  = bindec($line);          # interpret strings as base-2 int
     array_push($lines, $val);
   }
 

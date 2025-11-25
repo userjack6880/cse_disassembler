@@ -60,7 +60,7 @@ def open_file(in_file):
   with open(in_file) as fh:
     for line in fh:
       line = line.strip()   # truncate newline
-      val = int(line,2)     # convert string into binary literal
+      val = int(line,2)     # interpret strings as base-2 int
       lines.append(val)
 
   return lines
