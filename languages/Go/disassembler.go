@@ -1,3 +1,5 @@
+// John Bradley 2025
+
 package main
 
 import (
@@ -7,153 +9,141 @@ import (
     "strconv"
 )
 
-//############################################################################//
+var comp_table = map[int]string {
+  0b0101010 : "0",
+  0b0111111 : "1",
+  0b0111010 : "-1",
+  0b0001100 : "D",
+  0b0110000 : "A",
+  0b1110000 : "M",
+  0b0001101 : "!D",
+  0b0110001 : "!A",
+  0b1110001 : "!M",
+  0b0001111 : "-D",
+  0b0110011 : "-A",
+  0b1110011 : "-M",
+  0b0011111 : "D+1",
+  0b0110111 : "A+1",
+  0b1110111 : "M+1",
+  0b0001110 : "D-1",
+  0b0110010 : "A-1",
+  0b1110010 : "M-1",
+  0b0000010 : "D+A",
+  0b1000010 : "D+M",
+  0b0010011 : "D-A",
+  0b1010011 : "D-M",
+  0b0000111 : "A-D",
+  0b1000111 : "M-D",
+  0b0000000 : "D&A",
+  0b1000000 : "D&M",
+  0b0010101 : "D|A",
+  0b1010101 : "D|M",
+  // invalid comps
+  0b1101010 : "",
+  0b1111111 : "",
+  0b1111010 : "",
+  0b1001100 : "",
+  0b1001101 : "",
+  0b1001111 : "",
+  0b1011111 : "",
+}
+
+var jump_table = map[int]string {
+  0b000 : "",
+  0b001 : "JGT",
+  0b010 : "JEQ",
+  0b011 : "JGE",
+  0b100 : "JLT",
+  0b101 : "JNE",
+  0b110 : "JLE",
+  0b111 : "JMP",
+}
+
+func open_file(in_file string) []uint16 {
+	_, err := os.Stat(in_file)
+	if os.IsNotExist(err) { panic(fmt.Sprintf("Input file does not exist: %v", err)) }
+
+	fh, err := os.ReadFile(in_file)
+	if err != nil {	panic(fmt.Sprintf("Can't open %s: %v", in_file, err)) }
+
+	lines := strings.Split(string(fh), "\n")	// truncates newlines
+	var op_codes []uint16
+
+	for _, line := range lines {
+		if line == "" { continue }
+		val, err := strconv.ParseUint(line, 2, 16)	// interpret strings as base-2 int
+		if err != nil {	panic(err) }
+		op_codes = append(op_codes, uint16(val))
+	}
+
+	return op_codes
+}
+
+func write_file(out_file string, lines []string) {
+	// add linebreak at end of output
+	err := os.WriteFile(out_file, []byte(strings.Join(lines, "\n") + "\n"), 0644)
+	if err != nil { panic(fmt.Sprintf("Can't write to %s, %v", out_file, err)) }
+}
+
+func get_bit(value uint16, bit_index uint8) bool {
+	return (value & (1 << bit_index)) != 0
+}
 
 func main() {
+	if len(os.Args) < 2 { panic("At least one file expected!") }
 
-    // Check if at least one input file path has been passed
-    if len(os.Args) < 2 {
-        fmt.Println("At least one file expected")
-        return
-    }
+	for i := 1; i < len(os.Args); i++ {
+		in_file := os.Args[i]
+		if !strings.HasSuffix(in_file, ".hack") { panic ("must be .hack file!") }
 
-    // Loop through each input file
-    for curArg := 1; curArg < len(os.Args); curArg++ {
+		out_file := strings.ReplaceAll(in_file, ".hack", ".asm")
 
-        var inFile = os.Args[curArg]
+		// open the file and populate lines
+		binary := open_file(in_file)
 
-        // Check if input file path has appropriate extension 
-        if (!strings.HasSuffix(inFile, ".hack")) {
-            fmt.Println("Input must be a .hack file")
-            return
-        }
+		// decode the binary
+		var asm_array []string
 
-        // Check if input file exists
-        _, err := os.Stat(inFile)
-        if (os.IsNotExist(err)) {
-            fmt.Println("Input file does not exist")
-            return
-        }
+		for _, op := range binary {
+			// determine if c or a op
+			if get_bit(op,15) {
+				// c op
+				// determine comp
+				comp_val := (op >> 6) & 0b1111111		// bit shift and isolate 7 bits
+				comp := comp_table[int(comp_val)]
 
-        // Read binary lines from input file
-        fileContents, err := os.ReadFile(inFile)
-        if err != nil {
-            fmt.Println(err)
-            return
-        }
-        inLines := strings.Split(string(fileContents), "\n")
+				// error check
+				if comp == "" { panic(fmt.Sprintf("invalid comp: %07b", comp_val)) }
 
-        // Create structure to contain HACK assembly lines
-        var outLines []string
+				// determine dest
+				dest := ""
+				if get_bit(op,5) { dest += "A" }
+				if get_bit(op,4) { dest += "D" }
+				if get_bit(op,3) { dest += "M" }
 
-        // Computation Lookup Structure
-        var compTable = map[string]string {
-            "0101010": "0",
-            "0111111": "1",
-            "0111010": "-1",
-            "0001100": "D",
-            "0110000": "A",
-            "1110000": "M",
-            "0001101": "!D",
-            "0110001": "!A",
-            "1110001": "!M",
-            "0001111": "-D",
-            "0110011": "-A",
-            "1110011": "-M",
-            "0011111": "D+1",
-            "0110111": "A+1",
-            "1110111": "M+1",
-            "0001110": "D-1",
-            "0110010": "A-1",
-            "1110010": "M-1",
-            "0000010": "D+A",
-            "1000010": "D+M",
-            "0010011": "D-A",
-            "1010011": "D-M",
-            "0000111": "A-D",
-            "1000111": "M-D",
-            "0000000": "D&A",
-            "1000000": "D&M",
-            "0010101": "D|A",
-            "1010101": "D|M",
-        }
+				// determine jump
+				jump := jump_table[int(op & 0b111)]
 
-        // Destination Lookup Structure
-        var destTable = map[string]string {
-            "000": "",
-            "001": "M=",
-            "010": "D=",
-            "011": "DM=",
-            "100": "A=",
-            "101": "AM=",
-            "110": "AD=",
-            "111": "ADM=",
-        }
+				// now build the operation
+				asm := ""
 
-        // Jump Lookup Structure
-        var jumpTable = map[string]string {
-            "000": "",
-            "001": ";JGT",
-            "010": ";JEQ",
-            "011": ";JGE",
-            "100": ";JLT",
-            "101": ";JNE",
-            "110": ";JLE",
-            "111": ";JMP",
-        }
+				// dest
+				if dest != "" { asm += fmt.Sprintf("%s=", dest) }
 
-        //############################################################################//
+				// comp
+				asm += comp
 
-        // Process the binary inputs and convert them to HACK assembly
-        for _, line := range inLines {
-            
-            // A Instruction
-            // if - Check instruction op-code (the first char in the string)
-            
-                // Get the remaining substring and convert to decimal 
-                // Conversion (just uncomment)
-                // value, err := strconv.ParseInt(line[1:16], 2, 64)
-                // if err != nil {
-                //     fmt.Println(err)
-                //     return
-                // }
+				// jump
+				if jump != "" { asm += fmt.Sprintf(";%s", jump) }
 
-                // Construct the appropriate HACK instruction
-                // https://golangdocs.com/concatenate-strings-in-golang
+				asm_array = append(asm_array, asm)
+			} else {
+				// a op
+				asm_array = append(asm_array, fmt.Sprintf("@%d", op))
+			}
+		}
 
-                // Append to hackList
-                // https://dev.to/andyhaskell/a-closer-look-at-go-s-slice-append-function-3bhb
-
-            // C Instruction
-            // else if - Check instruction op-code (the first char in the string)
-
-                // Create strings from the appropriate substrings
-                // cBit, dBit, jBit
-                // https://golangdocs.com/substring-in-golang
-
-                // Return HACK destination string from destTable using dBit
-                // https://golangdocs.com/maps-in-golang
-
-                // Return HACK computation string from compTable using cBit
-
-                // Return HACK jump string from jumpTable using jBit
-
-                // Construct the appropriate HACK instruction
-
-                // Append to hackList
-        }
-
-        //############################################################################//
-
-        // Create output file name
-        contentOut := []byte(strings.Join(outLines, "\n"))
-        newFile := strings.ReplaceAll(inFile,".hack",".asm")
-
-        // Write data to output file
-        err = os.WriteFile(newFile, contentOut, 0644)
-        if err != nil {
-            fmt.Println(err)
-            return
-        }
-    }
+		// write to file
+		write_file(out_file, asm_array)
+	}
 }

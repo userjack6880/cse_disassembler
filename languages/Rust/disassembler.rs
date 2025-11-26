@@ -1,3 +1,5 @@
+// John Bradley 2025
+
 #![allow(non_snake_case)]
 use std::collections::HashMap;
 use std::env;
@@ -6,152 +8,156 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::io::Write;
 
-//############################################################################//
+fn comp_table() -> HashMap<u16, &'static str> {
+  HashMap::from([
+    (0b0101010, "0"),
+    (0b0111111, "1"),
+    (0b0111010, "-1"),
+    (0b0001100, "D"),
+    (0b0110000, "A"),
+    (0b1110000, "M"),
+    (0b0001101, "!D"),
+    (0b0110001, "!A"),
+    (0b1110001, "!M"),
+    (0b0001111, "-D"),
+    (0b0110011, "-A"),
+    (0b1110011, "-M"),
+    (0b0011111, "D+1"),
+    (0b0110111, "A+1"),
+    (0b1110111, "M+1"),
+    (0b0001110, "D-1"),
+    (0b0110010, "A-1"),
+    (0b1110010, "M-1"),
+    (0b0000010, "D+A"),
+    (0b1000010, "D+M"),
+    (0b0010011, "D-A"),
+    (0b1010011, "D-M"),
+    (0b0000111, "A-D"),
+    (0b1000111, "M-D"),
+    (0b0000000, "D&A"),
+    (0b1000000, "D&M"),
+    (0b0010101, "D|A"),
+    (0b1010101, "D|M"),
+    // invalid comps
+    (0b1101010, ""),
+    (0b1111111, ""),
+    (0b1111010, ""),
+    (0b1001100, ""),
+    (0b1001101, ""),
+    (0b1001111, ""),
+    (0b1011111, "")
+  ])
+}
+
+fn jump_table() -> HashMap<u16, &'static str> {
+  HashMap::from([
+    (0b000, ""),
+    (0b001, "JGT"),
+    (0b010, "JEQ"),
+    (0b011, "JGE"),
+    (0b100, "JLT"),
+    (0b101, "JNE"),
+    (0b110, "JLE"),
+    (0b111, "JMP")
+  ])
+}
+
+fn open_file(in_file: &str) -> Vec<u16> {
+  if !Path::new(&in_file).exists() { panic!("{} does not exist", in_file) }
+
+  let fh = File::open(&in_file).expect("Can't open file to read!");
+  let lines = BufReader::new(fh);
+
+  let mut op_codes: Vec<u16> = Vec::new();
+
+  for line in lines.lines() {
+    let raw_line = line           // newline is automatically truncated
+      .expect("Error reading line");
+    if !raw_line.is_empty() {     // interpret strings as base-2 int
+      let val = u16::from_str_radix(&raw_line, 2)
+        .expect("Invalid binary string");
+      op_codes.push(val);
+    }
+  }
+
+  op_codes
+}
+
+fn write_file(out_file: &str, lines: &Vec<String>) {
+  let mut fh = File::create(out_file).expect("Can't open file to write!");
+
+  if let Err(e) = writeln!(fh, "{}", lines.join("\n")) {  // automatically adds newline at end
+      panic!("Writing error: {}", e.to_string());
+  }    
+}
+
+fn get_bit(value: u16, bit_index: u8) -> bool {
+  (value & (1 << bit_index)) != 0
+}
 
 fn main() 
 {
-    let args: Vec<String> = env::args().collect();
+  let args: Vec<String> = env::args().collect();
+  let comp_table = comp_table();
+  let jump_table = jump_table();
 
-    // Check if at least one input file path has been passed
-    if args.len() < 2
-    {
-        println!("At least one file expected");
-        return;
+  if args.len() < 2 { panic!("At least one file expected"); }
+
+  // Loop through each input file
+  for i in 1..args.len()
+  {
+    let in_file = &args[i];
+
+    if !in_file.ends_with(".hack") { panic!("must be a .hack file!"); }
+
+    let out_file = in_file.replace(".hack", ".asm");
+
+    // open the file and populate lines
+    let binary = open_file(in_file);
+
+    // decode the binary
+    let mut asm_array: Vec<String> = Vec::new();
+
+    for op in &binary {
+      // determine if c or a op
+      if get_bit(*op,15) {
+        // c op
+        // determine comp
+        let comp_val = (op >> 6) & 0b1111111;   // bit shift and isolate 7 bits
+        let comp = comp_table.get(&comp_val).expect("invalid comp_table lookup");
+
+        // error check
+        if comp.is_empty() { panic!("invalid comp: {:07b}", comp_val); }
+
+        // determine dest
+        let mut dest = String::new();
+        if get_bit(*op,5) { dest.push_str("A"); }
+        if get_bit(*op,4) { dest.push_str("D"); }
+        if get_bit(*op,3) { dest.push_str("M"); }
+
+        // determine jump
+        let jump = jump_table.get(&(op & 0b111)).expect("invalid jump_table lookup");
+
+        // now build the operation
+        let mut asm = String::new();
+
+        // dest
+        if !dest.is_empty() { asm.push_str(&format!("{}=", dest)); }
+
+        // comp
+        asm.push_str(&comp);
+
+        // jump
+        if !jump.is_empty() { asm.push_str(&format!(";{}", jump)); }
+
+        asm_array.push(asm);
+      }
+      else {
+        asm_array.push(format!("@{}", op)); // should be safe, as bit 15 isn't used
+      }
     }
 
-    // Loop through each input file
-    for curArg in 1..args.len()
-    {
-        let inFile = &args[curArg];
-
-        // Check if input file path has appropriate extension 
-        if !inFile.contains(".hack")
-        {
-            println!("Input must be a .hack file");
-            return;
-        }
-        
-        // Check if input file exists
-        if !Path::new(&inFile).exists()
-        {
-            println!("Input file does not exist");
-            return;
-        }
-
-        // Read binary lines from input file
-        let file = File::open(&inFile).unwrap();
-        let inLines = BufReader::new(file);
-
-        // Create structure to contain HACK assembly lines
-        let mut outLines = Vec::<String>::new();
-
-        // Computation Lookup Structure
-        let compTable = HashMap::from
-        ([
-            ("0101010", "0"),
-            ("0111111", "1"),
-            ("0111010", "-1"),
-            ("0001100", "D"),
-            ("0110000", "A"),
-            ("1110000", "M"),
-            ("0001101", "!D"),
-            ("0110001", "!A"),
-            ("1110001", "!M"),
-            ("0001111", "-D"),
-            ("0110011", "-A"),
-            ("1110011", "-M"),
-            ("0011111", "D+1"),
-            ("0110111", "A+1"),
-            ("1110111", "M+1"),
-            ("0001110", "D-1"),
-            ("0110010", "A-1"),
-            ("1110010", "M-1"),
-            ("0000010", "D+A"),
-            ("1000010", "D+M"),
-            ("0010011", "D-A"),
-            ("1010011", "D-M"),
-            ("0000111", "A-D"),
-            ("1000111", "M-D"),
-            ("0000000", "D&A"),
-            ("1000000", "D&M"),
-            ("0010101", "D|A"),
-            ("1010101", "D|M")
-        ]);
-
-        // Destination Lookup Structure
-        let destTable = HashMap::from
-        ([
-            ("000", ""),
-            ("001", "M="),
-            ("010", "D="),
-            ("011", "DM="),
-            ("100", "A="),
-            ("101", "AM="),
-            ("110", "AD="),
-            ("111", "ADM=")
-        ]);
-
-        // Jump Lookup Structure
-        let jumpTable = HashMap::from
-        ([
-            ("000", ""),
-            ("001", ";JGT"),
-            ("010", ";JEQ"),
-            ("011", ";JGE"),
-            ("100", ";JLT"),
-            ("101", ";JNE"),
-            ("110", ";JLE"),
-            ("111", ";JMP")
-        ]);
-
-        //############################################################################//
-
-        // Process the binary inputs and convert them to HACK assembly
-        for line in inLines.lines() 
-        {
-            let line = line.unwrap();
-
-            // A Instruction
-            // if - Check instruction op-code (the first char in the string)
-
-                // Get the remaining substring and convert to decimal
-                // Conversion (just uncomment)
-                // let value = isize::from_str_radix(&line[1..16], 2).unwrap();
-
-                // Construct the appropriate HACK instruction (I suggest format!)
-                // https://devenum.com/5-ways-to-concatenate-string-in-rust/
-
-                // Append to hackList
-                // https://doc.rust-lang.org/std/vec/struct.Vec.html
-
-            // C Instruction
-            // else if - Check instruction op-code (the first char in the string)
-
-                // Create strings from the appropriate substrings
-                // cBit, dBit, jBit
-                // https://docs.rs/substring/latest/substring/
-
-                // Return HACK destination string from destTable using dBit
-                // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-
-                // Return HACK computation string from compTable using cBit
-
-                // Return HACK jump string from jumpTable using jBit
-
-                // Construct the appropriate HACK instruction
-
-                // Append to hackList
-            }
-
-        //############################################################################//
-
-        // Create output file name
-        let mut outFile = File::create(inFile.replace(".hack", ".asm")).expect("Unable to create file");  
-                 
-        // Write data to output file                                                                                                                                           
-        if let Err(e) = write!(outFile, "{}", outLines.join("")) 
-        {
-            println!("Writing error: {}", e.to_string());
-        }    
-    }
+    // write to file
+    write_file(&out_file, &asm_array);
+  }
 }
