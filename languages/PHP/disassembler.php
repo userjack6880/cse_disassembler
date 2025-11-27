@@ -77,7 +77,7 @@ function write_file($out_file, $lines) {
 }
 
 function get_bit($value, $bit_index) {
-  return ($value & (1 << $bit_index)) ? 1 : 0;
+  return ($value & (1 << $bit_index)) != 0;
 }
 
 if ($argc < 2) {

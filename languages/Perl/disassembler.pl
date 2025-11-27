@@ -84,7 +84,7 @@ sub write_file {
 
 sub get_bit {
   my ($value, $bit_index) = @_;
-  return ($value & (1 << $bit_index)) ? 1 : 0;
+  return ($value & (1 << $bit_index)) != 0;
 }
 
 die "At least one file expected\n" if scalar @ARGV < 1;

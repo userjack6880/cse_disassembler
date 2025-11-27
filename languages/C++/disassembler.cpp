@@ -95,7 +95,7 @@ void write_file(const string& out_file, const vector<string>& lines) {
 }
 
 bool get_bit(int value, int bit_index) {
-  return (value & (1 << bit_index)) ? true : false;
+  return (value & (1 << bit_index)) != 0;
 }
 
 int main(int argc, char *argv[])

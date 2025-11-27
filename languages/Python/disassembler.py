@@ -71,7 +71,7 @@ def write_file(out_file, lines):
     fh.write("\n")          # add in the last linebreak
   
 def get_bit(value, bit_index):
-  return 1 if (value & (1 << bit_index)) else 0
+  return value & (1 << bit_index) != 0
 
 len(sys.argv) < 2 and sys.exit("At least one file expected\n")
 
