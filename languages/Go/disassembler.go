@@ -60,9 +60,6 @@ var jump_table = map[int]string {
 }
 
 func open_file(in_file string) []uint16 {
-	_, err := os.Stat(in_file)
-	if os.IsNotExist(err) { panic(fmt.Sprintf("Input file does not exist: %v", err)) }
-
 	fh, err := os.ReadFile(in_file)
 	if err != nil {	panic(fmt.Sprintf("Can't open %s: %v", in_file, err)) }
 

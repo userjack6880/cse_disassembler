@@ -54,8 +54,6 @@ jump_table = {
 }
 
 def open_file(in_file):
-  not file_exists(in_file) and sys.exit(f"{in_file} does not exist\n")
-  
   lines = []
   with open(in_file) as fh:
     for line in fh:
@@ -67,8 +65,7 @@ def open_file(in_file):
 
 def write_file(out_file, lines):
   with open(out_file, 'w') as fh:
-    fh.write("\n".join(lines))
-    fh.write("\n")          # add in the last linebreak
+    fh.write("\n".join(lines) + "\n")          # add in the last linebreak
   
 def get_bit(value, bit_index):
   return value & (1 << bit_index) != 0

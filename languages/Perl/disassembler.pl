@@ -76,8 +76,7 @@ sub write_file {
 
   open my $fh, '>', $out_file or die "Can't open $out_file: $!\n";
 
-  print $fh join("\n", @lines);
-  print $fh "\n"; # add in the last linebreak
+  print $fh join("\n", @lines)."\n";
 
   close $fh;
 }

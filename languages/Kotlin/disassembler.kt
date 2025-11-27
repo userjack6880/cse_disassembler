@@ -1,5 +1,68 @@
+// John Bradley 2025
+
 import java.io.File;
 import java.util.*;
+
+val comp_table = mapOf(
+  0b0101010 to "0",
+  0b0111111 to "1",
+  0b0111010 to "-1",
+  0b0001100 to "D",
+  0b0110000 to "A",
+  0b1110000 to "M",
+  0b0001101 to "!D",
+  0b0110001 to "!A",
+  0b1110001 to "!M",
+  0b0001111 to "-D",
+  0b0110011 to "-A",
+  0b1110011 to "-M",
+  0b0011111 to "D+1",
+  0b0110111 to "A+1",
+  0b1110111 to "M+1",
+  0b0001110 to "D-1",
+  0b0110010 to "A-1",
+  0b1110010 to "M-1",
+  0b0000010 to "D+A",
+  0b1000010 to "D+M",
+  0b0010011 to "D-A",
+  0b1010011 to "D-M",
+  0b0000111 to "A-D",
+  0b1000111 to "M-D",
+  0b0000000 to "D&A",
+  0b1000000 to "D&M",
+  0b0010101 to "D|A",
+  0b1010101 to "D|M",
+  // invalid comps
+  0b1101010 to "",
+  0b1111111 to "",
+  0b1111010 to "",
+  0b1001100 to "",
+  0b1001101 to "",
+  0b1001111 to "",
+  0b1011111 to ""
+)
+
+val jump_table = mapOf(
+  0b000 to "",
+  0b001 to "JGT",
+  0b010 to "JEQ",
+  0b011 to "JGE",
+  0b100 to "JLT",
+  0b101 to "JNE",
+  0b110 to "JLE",
+  0b111 to "JMP"
+)
+
+fun open_file(in_file: String): List<Int> {
+  val lines: List<String> = File(in_file).readLines()
+  val op_codes = lines.map { it.toInt(2) }
+
+  return op_codes
+}
+
+fun write_file(out_file: String, lines: List<String>) {
+  File(out_file).writeText(lines.joinToString("\n") + "\n");
+}
 
 //############################################################################//
 
@@ -22,106 +85,17 @@ fun main(args: Array<String>)
             return
         }
 
-        // Check if input file exists
-        if (!File(inFile).exists())
-        {
-            println("Input file does not exist")
-            return
-        }
-
-        // Read binary lines from input file
-        val inLines: List<String> = File(inFile).readLines();
 
         // Create structure to contain HACK assembly lines
         val outLines: ArrayList<String> = ArrayList<String>();
-
-        // Computation Lookup Structure
-        val compTable = mapOf(
-            "0101010" to "0",
-            "0111111" to "1",
-            "0111010" to "-1",
-            "0001100" to "D",
-            "0110000" to "A",
-            "1110000" to "M",
-            "0001101" to "!D",
-            "0110001" to "!A",
-            "1110001" to "!M",
-            "0001111" to "-D",
-            "0110011" to "-A",
-            "1110011" to "-M",
-            "0011111" to "D+1",
-            "0110111" to "A+1",
-            "1110111" to "M+1",
-            "0001110" to "D-1",
-            "0110010" to "A-1",
-            "1110010" to "M-1",
-            "0000010" to "D+A",
-            "1000010" to "D+M",
-            "0010011" to "D-A",
-            "1010011" to "D-M",
-            "0000111" to "A-D",
-            "1000111" to "M-D",
-            "0000000" to "D&A",
-            "1000000" to "D&M",
-            "0010101" to "D|A",
-            "1010101" to "D|M",
-        )
-
-        // Destination Lookup Structure
-        val destTable = mapOf(
-            "000" to "",
-            "001" to "M=",
-            "010" to "D=",
-            "011" to "DM=",
-            "100" to "A=",
-            "101" to "AM=",
-            "110" to "AD=",
-            "111" to "ADM="
-        )
-
-        // Jump Lookup Structure
-        val jumpTable = mapOf(
-            "000" to "",
-            "001" to ";JGT",
-            "010" to ";JEQ",
-            "011" to ";JGE",
-            "100" to ";JLT",
-            "101" to ";JNE",
-            "110" to ";JLE",
-            "111" to ";JMP"
-        )
 
         //############################################################################//
 
         // Process the binary inputs and convert them to HACK assembly
         for (line in inLines)
         {
-            // A Instruction
-            // if - Check instruction op-code (the first char in the char[])
 
-                // Get the remaining substring and convert to decimal
-                // Conversion (just uncomment)
-                // val binVal: String = line.substring(1, 16);
 
-                // Construct the appropriate HACK instruction
-
-                // Append to hackList
-
-            // C Instruction
-            // else if - Check instruction op-code (the first char in the char[])
-
-                // Create strings from the appropriate substrings
-                // cBit, dBit, jBit
-
-                // Return HACK destination string from destTable using dBit
-
-                // Return HACK computation string from compTable using cBit 
-
-                // Return HACK jump string from jumpTable using jBit
-
-                // Construct the appropriate HACK instruction
-
-                // Append to hackList
         }
 
         //############################################################################//

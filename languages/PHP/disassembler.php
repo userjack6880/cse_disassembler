@@ -70,8 +70,7 @@ function open_file($in_file) {
 function write_file($out_file, $lines) {
   $fh = fopen($out_file, "w") or die ("Can't open $out_file\n");
 
-  fwrite($fh, implode("\n", $lines));
-  fwrite($fh, "\n"); # add in the last linebreak
+  fwrite($fh, implode("\n", $lines)."\n"); # add in the last linebreak
 
   fclose($fh);
 }

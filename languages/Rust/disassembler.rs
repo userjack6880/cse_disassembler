@@ -3,7 +3,7 @@
 #![allow(non_snake_case)]
 use std::collections::HashMap;
 use std::env;
-use std::path::Path;
+// use std::path::Path;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::io::Write;
@@ -63,8 +63,6 @@ fn jump_table() -> HashMap<u16, &'static str> {
 }
 
 fn open_file(in_file: &str) -> Vec<u16> {
-  if !Path::new(&in_file).exists() { panic!("{} does not exist", in_file) }
-
   let fh = File::open(&in_file).expect("Can't open file to read!");
   let lines = BufReader::new(fh);
 
@@ -86,9 +84,9 @@ fn open_file(in_file: &str) -> Vec<u16> {
 fn write_file(out_file: &str, lines: &Vec<String>) {
   let mut fh = File::create(out_file).expect("Can't open file to write!");
 
-  if let Err(e) = writeln!(fh, "{}", lines.join("\n")) {  // automatically adds newline at end
+  if let Err(e) = writeln!(fh, "{}", lines.join("\n")) {
       panic!("Writing error: {}", e.to_string());
-  }    
+  }
 }
 
 fn get_bit(value: u16, bit_index: u8) -> bool {

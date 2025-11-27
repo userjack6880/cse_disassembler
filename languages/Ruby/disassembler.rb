@@ -51,15 +51,12 @@ jump_table = {
 }
 
 def open_file(in_file)
-  abort("Can't open #{in_file}") if not File.file?(in_file)
-
   lines = File.readlines(in_file, chomp: true)  # truncate newline while reading
   op_codes = lines.map { |line| line.to_i(2) }  # interpret string as base-2 int
 end
 
 def write_file(out_file, lines)
-  File.write(out_file, lines.join("\n"))
-  File.write(out_file, "\n", mode: "a")         # add in the last linebreak
+  File.write(out_file, lines.join("\n") + "\n")
 end
 
 def get_bit(value, bit_index)
