@@ -55,7 +55,7 @@ val jump_table = mapOf(
 
 fun open_file(in_file: String): List<Int> {
   val lines: List<String> = File(in_file).readLines()
-  val op_codes = lines.map { it.toInt(2) }
+  val op_codes = lines.map { it.toInt(2) }  // interpret strings as base-2 int
 
   return op_codes
 }
@@ -70,8 +70,7 @@ fun main(args: Array<String>)
     throw IllegalArgumentException("At least one file expected")
   }
 
-  for (in_file in args)
-  {
+  for (in_file in args) {
     if (!in_file.endsWith(".hack"))
     {
       throw IllegalArgumentException("must be .hack file!")
@@ -125,8 +124,9 @@ fun main(args: Array<String>)
         // a op
         asm_list.add("@${op}")
       }
-
-      File(out_file).writeText(asm_list.joinToString("\n") + "\n")
     }
+
+    // write to file
+    File(out_file).writeText(asm_list.joinToString("\n") + "\n")
   }
 }

@@ -1,134 +1,120 @@
-# Check if at least one input file path has been passed
-if ($args.Length -lt 1)
-{
-        echo "At least one file expected"
-    exit
+# John Bradley 2025
+
+$comp_table =
+@{
+  0b0101010 = "0"
+  0b0111111 = "1"
+  0b0111010 = "-1"
+  0b0001100 = "D"
+  0b0110000 = "A"
+  0b1110000 = "M"
+  0b0001101 = "!D"
+  0b0110001 = "!A"
+  0b1110001 = "!M"
+  0b0001111 = "-D"
+  0b0110011 = "-A"
+  0b1110011 = "-M"
+  0b0011111 = "D+1"
+  0b0110111 = "A+1"
+  0b1110111 = "M+1"
+  0b0001110 = "D-1"
+  0b0110010 = "A-1"
+  0b1110010 = "M-1"
+  0b0000010 = "D+A"
+  0b1000010 = "D+M"
+  0b0010011 = "D-A"
+  0b1010011 = "D-M"
+  0b0000111 = "A-D"
+  0b1000111 = "M-D"
+  0b0000000 = "D&A"
+  0b1000000 = "D&M"
+  0b0010101 = "D|A"
+  0b1010101 = "D|M"
+  # invalid comps
+  0b1101010 = ""
+  0b1111111 = ""
+  0b1111010 = ""
+  0b1001100 = ""
+  0b1001101 = ""
+  0b1001111 = ""
+  0b1011111 = ""
 }
 
-# Loop through each input file
-foreach ($inFile in $args)
-{
-    # Check if input file path has appropriate extension 
-    if (!$inFile.EndsWith(".hack"))
-    {
-        echo "Input must be a .hack file"
-        exit
+$jump_table =
+@{
+  0b000 = ""
+  0b001 = "JGT"
+  0b010 = "JEQ"
+  0b011 = "JGE"
+  0b100 = "JLT"
+  0b101 = "JNE"
+  0b110 = "JLE"
+  0b111 = "JMP"
+}
+
+function open_file {
+  param([string]$in_file)
+
+  return @([System.IO.File]::ReadLines($in_file) |
+    ForEach-Object { [Convert]::ToInt32($_, 2) })  # interpret strings as base-2 int
+}
+
+function get_bit {
+  param([int]$value, [int]$bit_index)
+  return ($value -band (1 -shl $bit_index)) -ne 0
+}
+
+if ($args.Length -lt 1) { throw "At least one file expected!" }
+
+foreach ($in_file in $args) {
+  if (!$in_file.EndsWith(".hack")) { throw "must be .hack file!" }
+
+  $out_file = $in_file.replace('.hack', '.asm')
+
+  # open the file and populate lines
+  $binary = open_file($in_file)
+
+  # decode the binary
+  $asm_array = @()
+
+  foreach ($op in $binary) {
+    # determine if c or a op
+    if (get_bit $op 15) {
+      # c op
+      # determine comp
+      $comp_val = ($op -shr 6) -band 0b1111111    # bit shift and isolate 7 bits
+      $comp = $comp_table[$comp_val]
+
+      # error check
+      if ($comp -eq "") { throw ("invalid comp: {0:D7}" -f $comp_val) }
+
+      # determine dest
+      $dest = "";
+      if (get_bit $op 5) { $dest += "A" }
+      if (get_bit $op 4) { $dest += "D" }
+      if (get_bit $op 3) { $dest += "M" }
+
+      # determine jump
+      $jump = $jump_table[$op -band 0b111]
+
+      # now build the operation
+      $asm = "";
+
+      # dest
+      if ($dest -ne "") { $asm += "$dest=" }
+
+      # comp
+      $asm += $comp
+
+      # jump
+      if ($jump -ne "") { $asm += ";$jump" }
+
+      $asm_array += $asm
     }
-
-    # Check if input file exists
-    if (![System.IO.File]::Exists($inFile))
-    {
-        echo "Input file does not exist"
-        exit
+    else {
+      $asm_array += "@$op"
     }
+  }
 
-    # Read binary lines from input file
-    $inLines = [System.IO.File]::ReadLines($inFile)
-
-    # Create structure to contain HACK assembly lines
-    $outLines = @()
-
-    # Computation Lookup Structure
-    $compTable = 
-    @{
-        '0101010' = '0';
-        '0111111' = '1';
-        '0111010' = '-1';
-        '0001100' = 'D';
-        '0110000' = 'A';
-        '1110000' = 'M';
-        '0001101' = '!D';
-        '0110001' = '!A';
-        '1110001' = '!M';
-        '0001111' = '-D';
-        '0110011' = '-A';
-        '1110011' = '-M';
-        '0011111' = 'D+1';
-        '0110111' = 'A+1';
-        '1110111' = 'M+1';
-        '0001110' = 'D-1';
-        '0110010' = 'A-1';
-        '1110010' = 'M-1';
-        '0000010' = 'D+A';
-        '1000010' = 'D+M';
-        '0010011' = 'D-A';
-        '1010011' = 'D-M';
-        '0000111' = 'A-D';
-        '1000111' = 'M-D';
-        '0000000' = 'D&A';
-        '1000000' = 'D&M';
-        '0010101' = 'D|A';
-        '1010101' = 'D|M'
-    };
-
-    # Destination Lookup Structure
-    $destTable = 
-    @{
-        '000' = '';
-        '001' = 'M=';
-        '010' = 'D=';
-        '011' = 'DM=';
-        '100' = 'A=';
-        '101' = 'AM=';
-        '110' = 'AD=';
-        '111' = 'ADM='
-    };
-
-    # Jump Lookup Structure
-    $jumpTable = 
-    @{
-        '000' = '';
-        '001' = ';JGT';
-        '010' = ';JEQ';
-        '011' = ';JGE';
-        '100' = ';JLT';
-        '101' = ';JNE';
-        '110' = ';JLE';
-        '111' = ';JMP'
-    };
-
-    ################################################################################
-
-    # Process the binary inputs and convert them to HACK assembly
-    foreach ($line in $inLines)
-    {
-        # A Instruction
-        # if - Check instruction op-code (the first char in the string)
-
-            # Get the remaining substring and convert to decimal 
-            # Conversion (just uncomment)
-            # $binString = $line.Substring(1, 15)
-            # $value = [convert]::ToInt32($binString, 2)
-
-            # Construct the appropriate HACK instruction
-            # https://localhorse.net/article/powershell-how-to-concatenate-strings
-
-            # Append to hackList
-            # https://www.delftstack.com/howto/powershell/add-items-to-array-in-powershell/
-
-        # C Instruction
-
-            # Create strings from the appropriate substrings
-            # cBit, dBit, jBit
-            # https://lazyadmin.nl/powershell/substring/
-
-            # Return HACK destination string from destTable using dBit
-            # https://lazyadmin.nl/powershell/powershell-hashtable/
-            
-            # Return HACK computation string from compTable using cBit
-
-            # Return HACK jump string from jumpTable using jBit
-
-            # Construct the appropriate HACK instruction
-
-            # Append to hackList
-    }
-
-    ################################################################################
-
-    # Create output file name
-    $outFile = $inFile.replace('.hack', '.asm')
-
-    # Write data to output file
-    [System.IO.File]::WriteAllLines($outFile, $outLines)
+  [System.IO.File]::WriteAllLines($out_file, $asm_array)
 }
