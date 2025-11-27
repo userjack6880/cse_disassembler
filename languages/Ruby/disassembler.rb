@@ -55,10 +55,6 @@ def open_file(in_file)
   op_codes = lines.map { |line| line.to_i(2) }  # interpret string as base-2 int
 end
 
-def write_file(out_file, lines)
-  File.write(out_file, lines.join("\n") + "\n")
-end
-
 def get_bit(value, bit_index)
   (value & (1 << bit_index)) != 0
 end
@@ -117,5 +113,5 @@ for in_file in ARGV do
   end
 
   # write to file
-  write_file(out_file, asm_array)
+  File.write(out_file, asm_array.join("\n") + "\n")
 end

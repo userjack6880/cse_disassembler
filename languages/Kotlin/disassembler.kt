@@ -60,50 +60,73 @@ fun open_file(in_file: String): List<Int> {
   return op_codes
 }
 
-fun write_file(out_file: String, lines: List<String>) {
-  File(out_file).writeText(lines.joinToString("\n") + "\n");
+fun get_bit(value: Int, bit_index: Int): Boolean {
+  return (value and (1 shl bit_index)) != 0
 }
-
-//############################################################################//
 
 fun main(args: Array<String>) 
 {
-    // Check if at least one input file path has been passed
-    if (args.size < 1)
+  if (args.size < 1) { 
+    throw IllegalArgumentException("At least one file expected")
+  }
+
+  for (in_file in args)
+  {
+    if (!in_file.endsWith(".hack"))
     {
-        println("At least one file expected")
-        return
+      throw IllegalArgumentException("must be .hack file!")
     }
-    
-    // Loop through each input file
-    for (inFile in args)
-    {
-        // Check if input file path has appropriate extension 
-        if (!inFile.endsWith(".hack"))
-        {
-            println("Input must be a .hack file")
-            return
+
+    val out_file = in_file.replace(".hack",".asm")
+
+    // open the file and populate lines
+    val binary = open_file(in_file)
+
+    // decode the binary
+    val asm_list = mutableListOf<String>()
+
+    for (op in binary) {
+      // determine if c or a op
+      if (get_bit(op,15)) {
+        // c op
+        // determine comp
+        val comp_val = (op shr 6) and 0b1111111   // bit shift and isolate 7 bits
+        val comp = comp_table[comp_val]
+
+        // error check
+        if (comp.isNullOrEmpty()) {
+          throw IllegalArgumentException("invalid comp")
         }
 
+        // determine dest
+        var dest = ""
+        if (get_bit(op,5)) { dest += "A" }
+        if (get_bit(op,4)) { dest += "D" }
+        if (get_bit(op,3)) { dest += "M" }
 
-        // Create structure to contain HACK assembly lines
-        val outLines: ArrayList<String> = ArrayList<String>();
+        // determine jump
+        val jump = jump_table[op and 0b111]
 
-        //############################################################################//
+        // now build the operation
+        var asm = ""
 
-        // Process the binary inputs and convert them to HACK assembly
-        for (line in inLines)
-        {
+        // dest
+        if (dest.isNotEmpty()) { asm += "${dest}=" }
 
+        // comp
+        asm += comp
 
-        }
+        // jump
+        if (!jump.isNullOrEmpty()) { asm += ";${jump}" }
 
-        //############################################################################//
+        asm_list.add(asm)
+      }
+      else {
+        // a op
+        asm_list.add("@${op}")
+      }
 
-        // Create output file name
-        val outFile = inFile.replace(".hack", ".asm");
-        
-        // Write data to output file
-        File(outFile).writeText(outLines.joinToString(separator=""));
+      File(out_file).writeText(asm_list.joinToString("\n") + "\n")
     }
+  }
 }
