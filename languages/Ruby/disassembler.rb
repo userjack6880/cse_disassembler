@@ -51,7 +51,7 @@ jump_table = {
 }
 
 def open_file(in_file)
-  puts "Can't open #{in_file}"; exit (1) if not File.file?(in_file)
+  abort("Can't open #{in_file}") if not File.file?(in_file)
 
   lines = File.readlines(in_file, chomp: true)  # truncate newline while reading
   op_codes = lines.map { |line| line.to_i(2) }  # interpret string as base-2 int
@@ -63,14 +63,14 @@ def write_file(out_file, lines)
 end
 
 def get_bit(value, bit_index)
-  (value & (1 << bit_index)) != 0 ? 1 : 0
+  (value & (1 << bit_index)) != 0
 end
 
 
-puts "At least one file expected"; exit (1) if ARGV.length < 1
+abort("At least one file expected") if ARGV.length < 1
 
 for in_file in ARGV do
-  puts "must be .hack file!"; exit (1) if not in_file.end_with? ".hack"
+  abort("must be .hack file!") if not in_file.end_with? ".hack"
 
   out_file = in_file.dup.sub! ".hack", ".asm"
 
@@ -89,7 +89,7 @@ for in_file in ARGV do
       comp = comp_table[comp_val]
 
       # error check
-      puts "invalid comp #{comp_val.to_s(2).rjust(7, "0")}"; exit (1) if comp.empty?
+      abort("invalid comp #{comp_val.to_s(2).rjust(7, "0")}") if comp.empty?
 
       # determine dest
       dest = ''
