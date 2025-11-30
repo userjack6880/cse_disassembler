@@ -31,15 +31,7 @@ val comp_table = mapOf(
   0b0000000 to "D&A",
   0b1000000 to "D&M",
   0b0010101 to "D|A",
-  0b1010101 to "D|M",
-  // invalid comps
-  0b1101010 to "",
-  0b1111111 to "",
-  0b1111010 to "",
-  0b1001100 to "",
-  0b1001101 to "",
-  0b1001111 to "",
-  0b1011111 to ""
+  0b1010101 to "D|M"
 )
 
 val jump_table = mapOf(

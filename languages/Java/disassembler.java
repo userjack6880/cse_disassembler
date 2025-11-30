@@ -37,14 +37,6 @@ public class disassembler
     comp_table.put(0b1000000, "D&M");
     comp_table.put(0b0010101, "D|A");
     comp_table.put(0b1010101, "D|M");
-    // invalid comps
-    comp_table.put(0b1101010, "");
-    comp_table.put(0b1111111, "");
-    comp_table.put(0b1111010, "");
-    comp_table.put(0b1001100, "");
-    comp_table.put(0b1001101, "");
-    comp_table.put(0b1001111, "");
-    comp_table.put(0b1011111, "");
   }
 
   private static final HashMap<Integer, String> jump_table = new HashMap<>();
@@ -105,7 +97,7 @@ public class disassembler
           String comp = comp_table.get(comp_val);
 
           // error check
-          if (comp.isEmpty()) {
+          if (comp == null) {
             throw new IllegalArgumentException(
               String.format("invalid comp: %07b", comp_val)
             );

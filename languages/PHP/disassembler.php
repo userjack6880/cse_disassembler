@@ -29,15 +29,7 @@ $comp_table = [
   0b0000000 => 'D&A',
   0b1000000 => 'D&M',
   0b0010101 => 'D|A',
-  0b1010101 => 'D|M',
-  # invalid comps
-  0b1101010 => '',
-  0b1111111 => '',
-  0b1111010 => '',
-  0b1001100 => '',
-  0b1001101 => '',
-  0b1001111 => '',
-  0b1011111 => ''
+  0b1010101 => 'D|M'
 ];
 
 $jump_table = [
@@ -107,7 +99,7 @@ for ($i = 1; $i < $argc; $i++) {
       $comp = $comp_table[$comp_val];
 
       # error check
-      if ($comp === "") {
+      if ($comp === null) {
         die(sprintf("invalid comp: %07b\n", $comp_val));
       }
 

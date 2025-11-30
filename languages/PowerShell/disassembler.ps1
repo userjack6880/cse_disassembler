@@ -30,14 +30,6 @@ $comp_table =
   0b1000000 = "D&M"
   0b0010101 = "D|A"
   0b1010101 = "D|M"
-  # invalid comps
-  0b1101010 = ""
-  0b1111111 = ""
-  0b1111010 = ""
-  0b1001100 = ""
-  0b1001101 = ""
-  0b1001111 = ""
-  0b1011111 = ""
 }
 
 $jump_table =
@@ -86,7 +78,7 @@ foreach ($in_file in $args) {
       $comp = $comp_table[$comp_val]
 
       # error check
-      if ($comp -eq "") { throw ("invalid comp: {0:D7}" -f $comp_val) }
+      if (-not $comp) { throw ("invalid comp: {0:D7}" -f $comp_val) }
 
       # determine dest
       $dest = "";

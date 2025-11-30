@@ -28,15 +28,7 @@ comp_table = {
   0b0000000 => 'D&A',
   0b1000000 => 'D&M',
   0b0010101 => 'D|A',
-  0b1010101 => 'D|M',
-  # invalid comps
-  0b1101010 => '',
-  0b1111111 => '',
-  0b1111010 => '',
-  0b1001100 => '',
-  0b1001101 => '',
-  0b1001111 => '',
-  0b1011111 => ''
+  0b1010101 => 'D|M'
 }
 
 jump_table = {
@@ -82,7 +74,7 @@ for in_file in ARGV do
       comp = comp_table[comp_val]
 
       # error check
-      abort("invalid comp #{comp_val.to_s(2).rjust(7, "0")}") if comp.empty?
+      abort("invalid comp #{comp_val.to_s(2).rjust(7, "0")}") if comp.nil?
 
       # determine dest
       dest = ''

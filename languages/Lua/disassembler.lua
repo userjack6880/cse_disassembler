@@ -1,137 +1,143 @@
+-- John Bradley 2025
+
+comp_table = {
+  -- Lua doesn't support binary representation... but it does hex
+  [0x2A] = "0",
+  [0x3F] = "1",
+  [0x3A] = "-1",
+  [0x0C] = "D",
+  [0x30] = "A",
+  [0x70] = "M",
+  [0x0D] = "!D",
+  [0x31] = "!A",
+  [0x71] = "!M",
+  [0x0F] = "-D",
+  [0x33] = "-A",
+  [0x73] = "-M",
+  [0x1F] = "D+1",
+  [0x37] = "A+1",
+  [0x77] = "M+1",
+  [0x0E] = "D-1",
+  [0x32] = "A-1",
+  [0x72] = "M-1",
+  [0x02] = "D+A",
+  [0x42] = "D+M",
+  [0x13] = "D-A",
+  [0x53] = "D-M",
+  [0x07] = "A-D",
+  [0x47] = "M-D",
+  [0x00] = "D&A",
+  [0x40] = "D&M",
+  [0x15] = "D|A",
+  [0x55] = "D|M"
+}
+
+jump_table = {
+  [0] = "",
+  [1] = "JGT",
+  [2] = "JEQ",
+  [3] = "JGE",
+  [4] = "JLT",
+  [5] = "JNE",
+  [6] = "JLE",
+  [7] = "JMP"
+}
+
+function open_file(in_file)
+  local fh = io.open(in_file, "r")
+  if not fh then
+    error("Can't open " .. in_file)
+  end
+
+  local lines = {}
+  for line in fh:lines() do
+    -- new lines are already truncated
+    local val = tonumber(line,2)  -- interpret strings as base-2 int
+    table.insert(lines, val)
+  end
+
+  fh:close()
+
+  return lines
+end
+
+function write_file(out_file, lines)
+  local fh = io.open(out_file, "w")
+  if not fh then
+    error("Can't open " .. out_file)
+  end
+
+  fh:write(table.concat(lines, "\n"))
+
+  fh:close()
+end
+
+function get_bit(value, bit_index)
+  return (value & (1 << bit_index)) ~= 0
+end
+
 -- Check if at least one input file path has been passed
 if #arg < 1 then
-    print("At least one file expected")
-    os.exit(1)
+  error("At least one file expected")
 end
 
 -- Loop through each input file
-for curArg = 1, #arg do
+for i = 1, #arg do
+  local in_file = arg[i]
 
-    inFile = arg[curArg]
+  if not in_file:find(".hack") then
+      error("must be .hack file!")
+  end
 
-    -- Check if input file path has appropriate extension 
-    if not inFile:find(".hack") then
-        print("Input must be a .hack file")
-        os.exit(1)
+  local out_file = string.gsub(in_file, ".hack", ".asm")
+
+  -- open the file and populate lines
+  local binary = open_file(in_file)
+
+  -- decode the binary
+  local asm_table = {}
+
+  for _, op in ipairs(binary) do
+    -- determine if c or a op
+    if get_bit(op,15) then
+      -- c op
+      -- determine cmp
+      local comp_val = (op >> 6) & 0x7F -- bit shift and isolate 7 bits
+      local comp = comp_table[comp_val]
+
+      -- error check
+      if comp == nil then
+        error(string.format("Invalid comp: %d", comp_val))
+      end
+
+      -- determine dest
+      local dest = ""
+      if get_bit(op,5) then dest = dest .. "A" end
+      if get_bit(op,4) then dest = dest .. "D" end
+      if get_bit(op,3) then dest = dest .. "M" end
+
+      -- determine jump
+      local jump = jump_table[op & 0x7] -- isolate the lowest 3 bits
+
+      -- now build the operation
+      local asm = ""
+
+      -- dest
+      if dest ~= "" then asm = asm .. dest .. "=" end
+
+      -- comp
+      asm = asm .. comp
+
+      -- jump
+      if jump ~= "" then asm = asm .. ";" .. jump end
+
+      table.insert(asm_table, asm)
+    else
+      -- a op
+      table.insert(asm_table, "@" .. op)
     end
+  end
 
-    -- Check if input file exists
-    if not io.open(inFile, "r") then
-        print("Input file does not exist")
-        os.exit(1)
-    end
-
-    -- Read binary lines from input file
-    local fh = io.open(inFile, "r")
-    local inLines = {}
-    for line in fh:lines() do
-        table.insert (inLines, line);
-    end
-    fh:close()
-
-    -- Create structure to contain HACK assembly lines
-    outLines = {}
-
-    -- Computation Lookup Structure
-    compTable = {
-        ["0101010"] = "0",
-        ["0111111"] = "1",
-        ["0111010"] = "-1",
-        ["0001100"] = "D",
-        ["0110000"] = "A",
-        ["1110000"] = "M",
-        ["0001101"] = "!D",
-        ["0110001"] = "!A",
-        ["1110001"] = "!M",
-        ["0001111"] = "-D",
-        ["0110011"] = "-A",
-        ["1110011"] = "-M",
-        ["0011111"] = "D+1",
-        ["0110111"] = "A+1",
-        ["1110111"] = "M+1",
-        ["0001110"] = "D-1",
-        ["0110010"] = "A-1",
-        ["1110010"] = "M-1",
-        ["0000010"] = "D+A",
-        ["1000010"] = "D+M",
-        ["0010011"] = "D-A",
-        ["1010011"] = "D-M",
-        ["0000111"] = "A-D",
-        ["1000111"] = "M-D",
-        ["0000000"] = "D&A",
-        ["1000000"] = "D&M",
-        ["0010101"] = "D|A",
-        ["1010101"] = "D|M"
-    }
-
-    -- Destination Lookup Structure
-    destTable = {
-        ["000"] = "",
-        ["001"] = "M=",
-        ["010"] = "D=",
-        ["011"] = "DM=",
-        ["100"] = "A=",
-        ["101"] = "AM=",
-        ["110"] = "AD=",
-        ["111"] = "ADM="
-    }
-
-    -- Jump Lookup Structure
-    jumpTable = {
-        ["000"] = "",
-        ["001"] = ";JGT",
-        ["010"] = ";JEQ",
-        ["011"] = ";JGE",
-        ["100"] = ";JLT",
-        ["101"] = ";JNE",
-        ["110"] = ";JLE",
-        ["111"] = ";JMP"
-    }
-
-    --############################################################################--
-
-    -- Process the binary inputs and convert them to HACK assembly
-    for idx, line in pairs(inLines) do
-
-    -- A Instruction
-    -- if - Check instruction op-code (the first char in the string)
-
-        -- Get the remaining substring and convert to decimal
-        -- Conversion (just uncomment)
-        -- value = tonumber(value:sub(2, 16), 2)
-
-        -- Construct the appropriate HACK instruction
-        -- https://www.lua.org/pil/3.4.html
-
-        -- Append to hackList
-        -- https://www.lua.org/pil/19.2.html
-
-    -- C Instruction
-    -- elseif - Check instruction op-code (the first char in the string)
-        
-        -- Create strings from the appropriate substrings
-        -- cBit, dBit, jBit
-        -- https://www.tutorialspoint.com/string-sub-function-in-lua
-
-        -- Return HACK destination string from destTable using dBit
-        -- https://www.tutorialspoint.com/lua/lua_tables.htm
-
-        -- Return HACK computation string from compTable using cBit
-
-        -- Return HACK jump string from jumpTable using jBit
-
-        -- Construct the appropriate HACK instruction
-
-        -- Append to hackList
-    end
-
-    --############################################################################--
-
-    -- Create output file nameite to file
-    local outFile = string.sub(inFile, 1, -5) .. 'asm'
-    
-    -- Write data to output file
-    fh = io.open(outFile, "w")
-    fh:write(table.concat(outLines))
-    fh:close()
+  -- write to file
+  write_file(out_file, asm_table)
 end
