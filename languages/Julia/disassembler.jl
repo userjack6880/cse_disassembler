@@ -1,129 +1,116 @@
-# Check if at least one input file path has been passed
-if length(ARGS) < 1
-    println("At least one file expected")
-    exit()
+# John Bradley 2025
+
+comp_table = Dict{UInt16,String}(
+  0b0101010 => "0",
+  0b0111111 => "1",
+  0b0111010 => "-1",
+  0b0001100 => "D",
+  0b0110000 => "A",
+  0b1110000 => "M",
+  0b0001101 => "!D",
+  0b0110001 => "!A",
+  0b1110001 => "!M",
+  0b0001111 => "-D",
+  0b0110011 => "-A",
+  0b1110011 => "-M",
+  0b0011111 => "D+1",
+  0b0110111 => "A+1",
+  0b1110111 => "M+1",
+  0b0001110 => "D-1",
+  0b0110010 => "A-1",
+  0b1110010 => "M-1",
+  0b0000010 => "D+A",
+  0b1000010 => "D+M",
+  0b0010011 => "D-A",
+  0b1010011 => "D-M",
+  0b0000111 => "A-D",
+  0b1000111 => "M-D",
+  0b0000000 => "D&A",
+  0b1000000 => "D&M",
+  0b0010101 => "D|A",
+  0b1010101 => "D|M"
+)
+
+jump_table = Dict{UInt8,String}(
+  0b000 => "",
+  0b001 => "JGT",
+  0b010 => "JEQ",
+  0b011 => "JGE",
+  0b100 => "JLT",
+  0b101 => "JNE",
+  0b110 => "JLE",
+  0b111 => "JMP"
+);
+
+function open_file(in_file::String)
+  lines = readlines(in_file)
+  # interpret strings as base-2 int
+  op_codes = [parse(UInt16, line; base=2) for line in lines] 
+  return op_codes
 end
 
-# Loop through each input file
-for inFile in ARGS
+function get_bit(value::UInt16, bit_index::Integer)
+  return (value & (1 << bit_index)) != 0
+end
 
-    # Check if input file path has appropriate extension 
-    if !endswith(inFile, ".hack")
-        println("Input must be a .hack file")
-        exit()
+if length(ARGS) < 1
+  error("At least one file expected")
+end
+
+for in_file in ARGS
+  if !endswith(in_file, ".hack")
+    error("must be .hack file!")
+  end
+
+  out_file = replace(in_file, ".hack" => ".asm")
+
+  # open the file and populate lines
+  binary = open_file(in_file)
+
+  # decide the binary
+  asm_array = String[]
+
+  for op in binary
+    # determine if c or a op
+    if get_bit(op,15)
+      # c op
+      # determine comp
+      comp_val = (op >> 6) & 0b1111111; # bit shift and isolate 7 bits
+      # error check and set value
+      if haskey(comp_table, comp_val)
+        comp = comp_table[comp_val]
+      else
+        error("invalid comp: $(lpad(bin(comp_val), 7, '0'))")
+      end
+
+      # determine dest
+      dest = ""
+      if get_bit(op,5) dest *= "A" end
+      if get_bit(op,4) dest *= "D" end
+      if get_bit(op,3) dest *= "M" end
+
+      # determine jump
+      jump = jump_table[op & 0b111]   # isolate the lowest 3 bits
+
+      # now build the operation
+      asm = ""
+
+      # dest
+      if !isempty(dest) asm *= "$dest=" end
+
+      # comp
+      asm *= comp
+
+      # jump
+      if !isempty(jump) asm *= ";$jump" end
+
+      push!(asm_array, asm)
+    else
+      # a op
+      push!(asm_array, "@$op")
     end
+  end
 
-    # Check if input file exists
-    if !isfile(inFile)
-        println("Input file does not exist")
-        exit()
-    end
-
-    # Read binary lines from input file
-    inLines = readlines(inFile)
-
-    # Create structure to contain HACK assembly lines
-    outLines = []
-
-    # Computation Lookup Structure
-    compTable = Dict{String, String}(
-        "0101010" => "0",
-        "0111111" => "1",
-        "0111010" => "-1",
-        "0001100" => "D",
-        "0110000" => "A",
-        "1110000" => "M",
-        "0001101" => "!D",
-        "0110001" => "!A",
-        "1110001" => "!M",
-        "0001111" => "-D",
-        "0110011" => "-A",
-        "1110011" => "-M",
-        "0011111" => "D+1",
-        "0110111" => "A+1",
-        "1110111" => "M+1",
-        "0001110" => "D-1",
-        "0110010" => "A-1",
-        "1110010" => "M-1",
-        "0000010" => "D+A",
-        "1000010" => "D+M",
-        "0010011" => "D-A",
-        "1010011" => "D-M",
-        "0000111" => "A-D",
-        "1000111" => "M-D",
-        "0000000" => "D&A",
-        "1000000" => "D&M",
-        "0010101" => "D|A",
-        "1010101" => "D|M"
-    )
-
-    # Destination Lookup Structure
-    destTable = Dict{String, String}(
-        "000" => "",
-        "001" => "M=",
-        "010" => "D=",
-        "011" => "DM=",
-        "100" => "A=",
-        "101" => "AM=",
-        "110" => "AD=",
-        "111" => "ADM="
-    )
-
-    # Jump Lookup Structure
-    jumpTable = Dict{String, String}(
-        "000" => "",
-        "001" => ";JGT",
-        "010" => ";JEQ",
-        "011" => ";JGE",
-        "100" => ";JLT",
-        "101" => ";JNE",
-        "110" => ";JLE",
-        "111" => ";JMP"
-    )
-
-    ################################################################################
-
-    # Process the binary inputs and convert them to HACK assembly
-    for line in inLines
-
-        # A Instruction
-        # if - Check instruction op-code (the first char in the string)
-
-            # Get the remaining substring and convert to decimal 
-            # Conversion (just uncomment)
-            # value = parse(Int, line[2:16]; base=2)
-
-            # Construct the appropriate HACK instruction
-            # https://docs.julialang.org/en/v1/manual/strings/#man-concatenation
-
-            # Append to hackList
-            # https://docs.julialang.org/en/v1/base/collections/#Dequeues
-
-        # C Instruction
-        # elseif - Check instruction op-code (the first char in the string)
-        
-            # Create strings from the appropriate substrings
-            # cBit, dBit, jBit
-            # https://docs.julialang.org/en/v1/manual/strings/#String-Basics
-
-            # Return HACK destination string from destTable using dBit
-            # https://docs.julialang.org/en/v1/base/collections/#Dictionaries
-
-            # Return HACK computation string from compTable using cBit
-
-            # Return HACK jump string from jumpTable using jBit
-
-            # Construct the appropriate HACK instruction
-
-            # Append to hackList
-        # end
-    end
-
-    ################################################################################
-
-    # Create output file name
-    outFile = replace(inFile, ".hack" => ".asm")
-
-    # Write data to output file
-    write(outFile, join(outLines, "\n"))
+  # write to file
+  write(out_file, join(asm_array, "\n") * "\n")
 end
