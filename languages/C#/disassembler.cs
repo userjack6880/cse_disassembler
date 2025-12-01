@@ -1,152 +1,133 @@
-﻿using System;
+﻿// John Bradley 2025
+
+using System;
 using System.IO;
 
-//############################################################################//
+namespace Disassembler {
+  class Program {
+    private static readonly 
+    Dictionary<int,string> comp_table = new Dictionary<int,string> {
+      {0b0101010, "0"   },
+      {0b0111111, "1"   },
+      {0b0111010, "-1"  },
+      {0b0001100, "D"   },
+      {0b0110000, "A"   },
+      {0b1110000, "M"   },
+      {0b0001101, "!D"  },
+      {0b0110001, "!A"  },
+      {0b1110001, "!M"  },
+      {0b0001111, "-D"  },
+      {0b0110011, "-A"  },
+      {0b1110011, "-M"  },
+      {0b0011111, "D+1" },
+      {0b0110111, "A+1" },
+      {0b1110111, "M+1" },
+      {0b0001110, "D-1" },
+      {0b0110010, "A-1" },
+      {0b1110010, "M-1" },
+      {0b0000010, "D+A" },
+      {0b1000010, "D+M" },
+      {0b0010011, "D-A" },
+      {0b1010011, "D-M" },
+      {0b0000111, "A-D" },
+      {0b1000111, "M-D" },
+      {0b0000000, "D&A" },
+      {0b1000000, "D&M" },
+      {0b0010101, "D|A" },
+      {0b1010101, "D|M" }
+    };
 
-namespace Disassembler
-{
-    class Program
-    {
-        static void Main(string[] args)
-        {
-            // Check if input file path has been passed
-            if (args.Length < 1)
-            {
-                Console.WriteLine("At least one file expected");
-                System.Environment.Exit(0);
-            }
+    private static readonly
+    Dictionary<int,string> jump_table = new Dictionary<int,string> {
+      {0b000, ""    },
+      {0b001, "JGT" },
+      {0b010, "JEQ" },
+      {0b011, "JGE" },
+      {0b100, "JLT" },
+      {0b101, "JNE" },
+      {0b110, "JLE" },
+      {0b111, "JMP" }
+    };
 
-            foreach (string inFile in args)
-            {
-                // Check if input file path has appropriate extension 
-                if (!inFile.Contains(".hack"))
-                {
-                    Console.WriteLine("Input must be a .hack file");
-                    System.Environment.Exit(0);
-                }
-                
-                // Check if input file exists
-                if (!File.Exists(inFile))
-                {
-                    Console.WriteLine("Input file does not exist");
-                    System.Environment.Exit(0);
-                }
+    private static int[] open_file(string in_file) {
+      if (!File.Exists(in_file))
+        throw new Exception($"Can't open {in_file}");
 
-                // Read binary lines from input file
-                string[] inLines = File.ReadLines(inFile).ToArray();
+      List<int> lines = new List<int>();
 
-                // Create structure to contain HACK assembly lines
-                List<string> outLines = new List<string>();
+      foreach (string raw in File.ReadLines(in_file)) {
+        string line = raw.Trim(); // remove newlines
+        int val = Convert.ToInt32(line, 2); // interpret strings as base-2 integer
+        lines.Add(val);
+      }
 
-                // Computation Lookup Structure
-                Dictionary<string, string> compTable =
-                new Dictionary<string, string>()
-                {
-                    {"0101010", "0"},
-                    {"0111111", "1"},
-                    {"0111010", "-1"},
-                    {"0001100", "D"},
-                    {"0110000", "A"},
-                    {"1110000", "M"},
-                    {"0001101", "!D"},
-                    {"0110001", "!A"},
-                    {"1110001", "!M"},
-                    {"0001111", "-D"},
-                    {"0110011", "-A"},
-                    {"1110011", "-M"},
-                    {"0011111", "D+1"},
-                    {"0110111", "A+1"},
-                    {"1110111", "M+1"},
-                    {"0001110", "D-1"},
-                    {"0110010", "A-1"},
-                    {"1110010", "M-1"},
-                    {"0000010", "D+A"},
-                    {"1000010", "D+M"},
-                    {"0010011", "D-A"},
-                    {"1010011", "D-M"},
-                    {"0000111", "A-D"},
-                    {"1000111", "M-D"},
-                    {"0000000", "D&A"},
-                    {"1000000", "D&M"},
-                    {"0010101", "D|A"},
-                    {"1010101", "D|M"}
-                };
-
-                // Destination Lookup Structure
-                Dictionary<string, string> destTable =
-                new Dictionary<string, string>()
-                {
-                    {"000", ""},
-                    {"001", "M="},
-                    {"010", "D="},
-                    {"011", "DM="},
-                    {"100", "A="},
-                    {"101", "AM="},
-                    {"110", "AD="},
-                    {"111", "ADM="}
-                };
-
-                // Jump Lookup Structure
-                Dictionary<string, string> jumpTable =
-                new Dictionary<string, string>()
-                {
-                    {"000", ""},
-                    {"001", ";JGT"},
-                    {"010", ";JEQ"},
-                    {"011", ";JGE"},
-                    {"100", ";JLT"},
-                    {"101", ";JNE"},
-                    {"110", ";JLE"},
-                    {"111", ";JMP"}
-                };
-
-                //############################################################################//
-
-                // Process the binary inputs and convert them to HACK assembly
-                foreach (string line in inLines)
-                {
-                    // A Instruction
-                    // if - Check instruction op-code (the first char in the char[])
-                            
-                        // Get the remaining substring and convert to decimal
-                        // Conversion (just uncomment)
-                        // string value = line.Substring(1, 15);
-                        // int binVal = Convert.ToInt32(value, 2);
-                        // string val = binVal.ToString();
-
-                        // Construct the appropriate HACK instruction
-                        // https://docs.microsoft.com/en-us/dotnet/csharp/how-to/concatenate-multiple-strings
-
-                        // Append to hackList
-                        // https://thedeveloperblog.com/c-sharp/list-add
-
-                    // C Instruction
-                    // else if - Check instruction op-code (the first char in the char[])
-
-                        // Create strings from the appropriate substrings
-                        // cBit, dBit, jBit
-                        // https://www.geeksforgeeks.org/c-sharp-substring-method/
-
-                        // Return HACK destination string from destTable using dBit
-                        // https://www.geeksforgeeks.org/c-sharp-dictionary-with-examples/
-
-                        // Return HACK computation string from compTable using cBit
-
-                        // Return HACK jump string from jumpTable using jBit
-
-                        // Construct the appropriate HACK instruction
-
-                        // Append to hackList
-                }
-
-                //############################################################################//
-
-                // Create output file name
-                string outFile = inFile.Replace(".hack", ".asm");
-
-                // Write data to output file
-                File.WriteAllLines(outFile, outLines);
-            }
-        }
+      return lines.ToArray();
     }
+
+    private static bool get_bit(int value, int bit_index) {
+      return (value & (1 << bit_index)) != 0;
+    }
+
+    static void Main(string[] args) {
+      if (args.Length < 1)
+        throw new Exception("At least one file expected");
+
+      foreach (string in_file in args) {
+        if (!in_file.Contains(".hack"))
+          throw new Exception("must be a .hack file");
+
+        string out_file = in_file.Replace(".hack", ".asm");
+
+        // open the file and populate lines
+        int[] binary = open_file(in_file);
+
+        // decode the binary
+        List<string> asm_array = new List<string>();
+
+        foreach (int op in binary) {
+          // determine if c or a op
+          if (get_bit(op,15)) {
+            // c op
+            // determine comp
+            int comp_val = (op >> 6) & 0b1111111; // bit shift and isolate 7 bits
+            string comp = comp_table[comp_val];
+
+            // error check
+            if (string.IsNullOrEmpty(comp))
+              throw new Exception($"invalid comp: {comp_val}");
+
+            // determine dest
+            string dest = "";
+            if (get_bit(op,5)) dest += "A";
+            if (get_bit(op,4)) dest += "D";
+            if (get_bit(op,3)) dest += "M";
+
+            // determine jump
+            string jump = jump_table[op & 0b111]; // isolate the lowest 3 bits
+
+            // now build the operation
+            string asm = "";
+
+            // dest 
+            if (!string.IsNullOrEmpty(dest)) asm += $"{dest}=";
+
+            // comp
+            asm += comp;
+
+            // jump
+            if (!string.IsNullOrEmpty(jump)) asm += $";{jump}";
+
+            asm_array.Add(asm);
+          }
+          else {
+            // a op
+            asm_array.Add($"@{op}"); // should be safe, as bit 15 isn't used
+          }
+        }
+
+        // write to file
+        File.WriteAllLines(out_file, asm_array);
+      }
+    }
+  }
 }
