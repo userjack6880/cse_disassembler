@@ -1,142 +1,127 @@
+// John Bradley 2025
+
 import 'dart:io';
 
-//############################################################################//
+const Map<int, String> comp_table = {
+  // why did Dart remove binary representation...
+  0x2A: '0',
+  0x3F: '1',
+  0x3A: '-1',
+  0x0C: 'D',
+  0x30: 'A',
+  0x70: 'M',
+  0x0D: '!D',
+  0x31: '!A',
+  0x71: '!M',
+  0x0F: '-D',
+  0x33: '-A',
+  0x73: '-M',
+  0x1F: 'D+1',
+  0x37: 'A+1',
+  0x77: 'M+1',
+  0x0E: 'D-1',
+  0x32: 'A-1',
+  0x72: 'M-1',
+  0x02: 'D+A',
+  0x42: 'D+M',
+  0x13: 'D-A',
+  0x53: 'D-M',
+  0x07: 'A-D',
+  0x47: 'M-D',
+  0x00: 'D&A',
+  0x40: 'D&M',
+  0x15: 'D|A',
+  0x55: 'D|M'
+};
 
-void main(List<String> args) async
-{
-    // Check if at least one input file path has been passed
-    if (args.length < 1)
-    {
-        print(("At least one file expected"));
-        exit(0);
+const Map<int, String> jump_table = {
+  0: '',
+  1: 'JGT',
+  2: 'JEQ',
+  3: 'JGE',
+  4: 'JLT',
+  5: 'JNE',
+  6: 'JLE',
+  7: 'JMP'
+};
+
+Future<List<int>> open_file(String in_file) async {
+  if (!File(in_file).existsSync())
+    throw Exception("Can't open $in_file");
+
+  List<String> lines = await File(in_file).readAsLines();
+  List<int> op_array = [];
+
+  for (String line in lines) {
+    int val = int.parse(line, radix: 2); // interpret as base-2 int
+    op_array.add(val);
+  }
+
+  return op_array;
+}
+
+bool get_bit(int value, int bit_index) {
+  return (value & (1 << bit_index)) != 0;
+}
+
+void main(List<String> args) async {
+  if (args.length < 1)
+    throw Exception("At least one file expected");
+  
+  for (String in_file in args) {
+    if (!in_file.endsWith(".hack"))
+      throw Exception("must be a .hack file");
+    
+    String out_file = in_file.replaceAll(".hack",".asm");
+
+    // open the file and populate lines
+    List<int> binary = await open_file(in_file);
+
+    // decode the binary
+    List<String> asm_array = [];
+
+    for (int op in binary) {
+      // determine if c or a op
+      if (get_bit(op,15)) {
+        // c op
+        // determine comp
+        int comp_val = (op >> 6) & 0x7F; // bit shift and isolate
+        String? comp = comp_table[comp_val];
+
+        // error check
+        if (comp == null)
+          throw Exception("invalid comp: $comp_val");
+        
+        // determine dest
+        String dest = "";
+        if (get_bit(op,5)) dest += "A";
+        if (get_bit(op,4)) dest += "D";
+        if (get_bit(op,3)) dest += "M";
+
+        // determine jump
+        String? jump = jump_table[op & 0x7]; // isolate the lowest 3 bits
+
+        // now build the operation
+        String asm = "";
+
+        // dest
+        if (!dest.isEmpty) asm += "$dest=";
+
+        // comp
+        asm += comp;
+
+        // jump
+        if (jump != null && jump.isNotEmpty) asm += ";$jump";
+
+        asm_array.add(asm);
+      }
+      else {
+        // a op
+        asm_array.add("@$op"); // should be safe, bit 15 isn't used
+      }
     }
 
-    // Loop through each input file
-    for (String inFile in args)
-    {
-        // Check if input file path has appropriate extension 
-        if (!inFile.endsWith(".hack"))
-        {
-            print("Input must be a .hack file");
-            exit(0);
-        }
-                
-        // Check if input file exists
-        if (!File(inFile).existsSync())
-        {
-            print("Input file does not exist");
-            exit(0);
-        }
-
-        // Read binary lines from input file
-        List<String> inLines = await File(inFile).readAsLines();
-
-        // Create structure to contain HACK assembly lines
-        List<String> outLines = [];
-
-        // Computation Lookup Structure
-        Map<String, String> compTable = 
-        {
-            "0101010": "0",
-            "0111111": "1",
-            "0111010": "-1",
-            "0001100": "D",
-            "0110000": "A",
-            "1110000": "M",
-            "0001101": "!D",
-            "0110001": "!A",
-            "1110001": "!M",
-            "0001111": "-D",
-            "0110011": "-A",
-            "1110011": "-M",
-            "0011111": "D+1",
-            "0110111": "A+1",
-            "1110111": "M+1",
-            "0001110": "D-1",
-            "0110010": "A-1",
-            "1110010": "M-1",
-            "0000010": "D+A",
-            "1000010": "D+M",
-            "0010011": "D-A",
-            "1010011": "D-M",
-            "0000111": "A-D",
-            "1000111": "M-D",
-            "0000000": "D&A",
-            "1000000": "D&M",
-            "0010101": "D|A",
-            "1010101": "D|M"
-        };
-
-        // Destination Lookup Structure
-        Map<String, String> destTable = 
-        {
-            "000": "",
-            "001": "M=",
-            "010": "D=",
-            "011": "DM=",
-            "100": "A=",
-            "101": "AM=",
-            "110": "AD=",
-            "111": "ADM="
-        };
-
-        // Jump Lookup Structure
-        Map<String, String> jumpTable = 
-        {
-            "000": "",
-            "001": ";JGT",
-            "010": ";JEQ",
-            "011": ";JGE",
-            "100": ";JLT",
-            "101": ";JNE",
-            "110": ";JLE",
-            "111": ";JMP"
-        };
-
-        //############################################################################//
-
-        // Process the binary inputs and convert them to HACK assembly
-        for (String line in inLines)
-        {
-            // A Instruction
-            // if - Check instruction op-code (the first char in the string)
-            
-                // Get the remaining substring and convert to decimal 
-                // Conversion (just uncomment)
-                // String value = line.substring(1, 16);
-                // int binVal = int.parse(value, radix: 2);
-
-                // Construct the appropriate HACK instruction
-                // https://api.flutter.dev/flutter/dart-core/String-class.html
-
-                // Append to hackList
-                // https://api.dart.dev/stable/3.5.4/dart-core/List/add.html
-
-            // C Instruction
-            // else if - Check instruction op-code (the first char in the string)
-            
-                // Create strings from the appropriate substrings
-                // cBit, dBit, jBit
-                // https://api.flutter.dev/flutter/dart-core/String-class.html
-
-                // Return HACK destination string from destTable using dBit
-                // https://dart.dev/language/collections#maps
-
-                // Return HACK computation string from compTable using cBit
-
-                // Return HACK jump string from jumpTable using jBit
-
-                // Construct the appropriate HACK instruction
-
-                // Append to hackList
-        }
-
-        //############################################################################//
-
-        // Create output file name
-        String outFile = inFile.replaceAll(".hack", ".asm");
-
-        // Write data to output file
-        File(outFile).writeAsStringSync(outLines.join("\n"));
-    }
+    // write to file
+    File(out_file).writeAsStringSync(asm_array.join("\n") + "\n");
+  }
 }

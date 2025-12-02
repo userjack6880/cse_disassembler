@@ -77,75 +77,59 @@ void main(string[] args) {
   for (int i = 1; i < args.length; i++) {
     string in_file = args[i];
 
+    if (!endsWith(in_file, ".hack"))
+      throw new Exception("must be a .hack file");
     
-  }
-}
+    string out_file = in_file.replace(".hack",".asm");
 
-//############################################################################//
+    // open the file and populate lines
+    int[] binary = open_file(in_file);
 
+    // decode the binary
+    string[] asm_array;
 
-    // Loop through each input file
-    for (int curArg = 1; curArg < getline.length; curArg++)
-    {
-        string inFile = getline[curArg];
-    
-        // Check if input file path has appropriate extension 
-        if (!endsWith(inFile, ".hack"))
-        {
-            writeln("Input must be a .hack file");
-            return;
-        }
-  
+    foreach (op; binary) {
+      // determine if c or a op
+      if (get_bit(op,15)) {
+        // c op
+        // determine comp
+        int comp_val = (op >> 6) & 0b1111111; // bit shift and isolate 7 bits
+        string comp = comp_table[comp_val];
 
-        // Create structure to contain HACK assembly lines
-        DList!string outLines;
+        // error check
+        if (comp is null)
+          throw new Exception("invalid comp: " ~ to!string(comp_val));
 
+        // determine dest
+        string dest = "";
+        if (get_bit(op,5)) dest ~= "A";
+        if (get_bit(op,4)) dest ~= "D";
+        if (get_bit(op,3)) dest ~= "M";
 
+        // determine jump
+        string jump = jump_table[op & 0b111]; // isolate the lowest 3 bits
 
-        //############################################################################//
+        // now build the operations
+        string asm_op = "";
 
-        // Process the binary inputs and convert them to HACK assembly
-        foreach (string line; inLines)
-        {
-            // A Instruction
-            // if - Check instruction op-code (the first char in the string)
-            
-                // Get the remaining substring and convert to decimal
-                // Conversion (just uncomment)
-                // string value = line[1..16];
-                // int binVal =to!int(strtol(value.ptr, null, 2));
+        // dest
+        if (dest.length != 0) asm_op ~= dest ~ "=";
 
-                // Construct the appropriate HACK instruction
-                // https://dlang.org/spec/arrays.html#array-concatenation
-                
-                // Append to hackList
-                // https://dlang.org/phobos/std_container_dlist.html#.DList.insertBack
+        // comp
+        asm_op ~= comp;
 
-            // C Instruction
-            // else if - Check instruction op-code (the first char in the string)
+        // jump
+        if (jump.length != 0) asm_op ~= ";" ~ jump;
 
-                // Create strings from the appropriate substrings
-                // cBit, dBit, jBit
-                // https://dlang.org/spec/arrays.html#slicing
-
-                // Return HACK destination string from destTable using dBit
-                // https://dlang.org/spec/hash-map.html
-
-                // Return HACK computation string from compTable using cBit 
-
-                // Return HACK jump string from jumpTable using jBit
-
-                // Construct the appropriate HACK instruction
-
-                // Append to hackList
-        }
-
-        //############################################################################//
-
-        // Create output file name
-        string outFile = inFile.replace(".hack", ".asm");
-
-        // Write data to output file
-        toFile(outLines.array, outFile);
+        asm_array ~= asm_op ~ "\n"; // newline here because D is silly
+      }
+      else {
+        // a op
+        asm_array ~= "@" ~ to!string(op) ~ "\n";
+      }
     }
+
+    // write to file
+    asm_array.toFile(out_file);
+  }
 }

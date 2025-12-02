@@ -122,7 +122,7 @@ for my $in_file (@ARGV) {
 
       # jump
       $asm .= ";$jump" if $jump ne '';
-
+      
       push @asm, $asm;
     }
     else {
